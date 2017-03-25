@@ -2,6 +2,20 @@
 String.prototype.clearAnswer = function(){
 	return this.replace(new RegExp(/\./), '');
 };
+String.prototype.hashCode = function (str) {
+	var hash = 0,
+		i, chr;
+	
+	if (str.length === 0) return hash;
+	
+	for (i = 0; i < str.length; i++) {
+		chr   = str.charCodeAt(i);
+		hash  = ((hash << 7) - hash * 2) + chr;
+		hash |= 0; // Convert to 32bit integer
+	}
+	return hash;
+};
+
 
 var solveInterval,
 		slowSkipping = false,
@@ -115,14 +129,14 @@ function findAnswers(key) {
 	return res;
 }
 
-var supports_html5_storage = function () {
+var supports_local_storage = function () {
 	try {
 		return 'localStorage' in window && window['localStorage'] !== null;
 	} catch (e) {
 		return false;
 	}
 }
-var useLocal = supports_html5_storage();
+var useLocal = supports_local_storage();
 
 // Translation section
 
@@ -149,9 +163,6 @@ function saveAnswers() {
 
 function addAnswer(answer) {
 	var answer_f = answer;
-	if (current_task == tasks[2]) {
-		return;
-	}
 	if (current_task == tasks[1]) {
 		var w1 = current_task_text.split(' '),
 			w2 = answer.split(' '),
@@ -268,6 +279,21 @@ function solveCheckbox(p) {
 	nextStep(skip);
 }
 
+// audition section
+
+function solveAudition(p) {
+	//https://d7mj4aqfscim2.cloudfront.net/tts/{voice}/sentence/ee6cfc133e801b3f6eaf88db5be9a171
+	var parts = p.split('/');
+	var id = parts[parts.length - 1];
+	current_task_text = id;
+	var answer = findAnswer(id);
+	if (answer === null) {
+		return skip();
+	}
+	$('#word-input').val(answer);
+	$('#word-input').keyup();
+	setTimeout(nextStep, 1000);
+}
 
 function solve(task) {
 	solving_lock = true;
@@ -278,12 +304,18 @@ function solve(task) {
 		console.log('try to solve blank task');
 		solveBlank($('#session-element-container').find('h2.player'));
 	} else if (task == tasks[2]) {
-		console.log('Skipping audio task :(');
+		//console.log('Skipping audio task :(');
+		console.log('try to solve audition task');
+		var div = $('#big-speaker').find('div.hidden');
+		if (div !== undefined) {
+			solveAudition($(div[0]).attr('src'));
+		}
 		nextStep('skip');
 	} else if (task == tasks[3]) {
 		console.log('try to solve checkbox task');
 		solveCheckbox($('.col-left').find('bdi'));
 	} else {
+		current_task_text = '';
 		skip();
 	}
 }
